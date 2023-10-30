@@ -4,7 +4,7 @@ function buildlocal()
 {
     mkdir -p bin
     cd arkweb
-    rm -f arkweb
+    rm -f ../bin/arkweb
     go build -o ../bin
     cd ..
 }

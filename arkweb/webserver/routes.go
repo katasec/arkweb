@@ -1,19 +1,47 @@
 package webserver
 
 import (
+	"net/http"
+
 	"github.com/writeameer/arkweb/webserver/handlers"
 )
 
 func (s *Server) initialiseRoutes() {
 
 	// Define the sequence of middleware used to process all requests
-	middlewareSequence := MultipleMiddleware(
-		handlers.EntryHandler,
-		handlers.LogHandler,
-		handlers.FileHandler,
-	)
+	//middlewareSequence := getMiddlewareSequence()
 
 	// Use the file system to serve static files
-	s.mux.Handle("/", middlewareSequence)
+	//s.mux.Handle("/", middlewareSequence)
 
+	//fs := http.FileServer(http.FS(handlers.GetStaticAssets()))
+
+	//patterns := []string{"/", "/assets"}
+	// for _, pattern := range patterns {
+	// 	stripped := http.StripPrefix(pattern, handlers.LogHandler(handlers.FileHandler()))
+	// 	s.mux.Handle(pattern, stripped)
+	// }
+
+	s.mux.Handle("/assets/", run(handlers.FileHandler("/assets")))
+	s.mux.Handle("/api/arkweb", run(handlers.HomeHandler()))
+	s.mux.Handle("/api/arkweb/", run(handlers.FileHandler("/api/arkweb/")))
+
+	// Serve "assets" folder from root
+	//s.mux.Handle("/", run(handlers.FileHandler()))
+
+}
+
+func run(h http.HandlerFunc) http.HandlerFunc {
+	return MultipleMiddleware(
+		h,
+		handlers.LogHandlerFunc,
+	)
+
+}
+func getMiddlewareSequence() http.HandlerFunc {
+	return MultipleMiddleware(
+		handlers.EntryHandler,
+		handlers.LogHandlerFunc,
+		handlers.FileHandlerFunc("/"),
+	)
 }

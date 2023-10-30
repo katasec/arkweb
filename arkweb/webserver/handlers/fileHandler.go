@@ -1,32 +1,80 @@
 package handlers
 
 import (
-	"embed"
+	"fmt"
 	"io/fs"
 	"net/http"
 	"strings"
 )
 
-//go:embed all:assets
-var assets embed.FS
+func FileHandlerFunc(prefix string) func(http.HandlerFunc) http.HandlerFunc {
 
-func FileHandler(http.HandlerFunc) http.HandlerFunc {
+	return func(http.HandlerFunc) http.HandlerFunc {
 
-	var prefix = "/"
+		// Use the file system to serve static files
+		assets := GetStaticAssets()
+		fs := http.FileServer(http.FS(assets))
+
+		return func(w http.ResponseWriter, r *http.Request) {
+			fmt.Println("In File Handler:" + r.URL.RawPath)
+			strippedRequest := r.Clone(r.Context())
+			strippedRequest.URL.Path = strings.TrimPrefix(strippedRequest.URL.Path, prefix)
+
+			fs.ServeHTTP(w, r)
+		}
+	}
+}
+func FileHandlerMiddleWare(next http.HandlerFunc) http.HandlerFunc {
+
 	// Use the file system to serve static files
-	assets := getAssets()
+	assets := GetStaticAssets()
 	fs := http.FileServer(http.FS(assets))
 
 	return func(w http.ResponseWriter, r *http.Request) {
-
-		strippedRequest := r.Clone(r.Context())
-		strippedRequest.URL.Path = strings.TrimPrefix(strippedRequest.URL.Path, prefix)
-
 		fs.ServeHTTP(w, r)
 	}
 }
+func FileHandler(prefix ...string) http.HandlerFunc {
 
-func getAssets() fs.FS {
+	var stripPrefix string
+	if len(prefix) > 0 {
+		stripPrefix = prefix[0]
+	} else {
+		stripPrefix = ""
+	}
+
+	// Use the file system to serve static files
+	assets := GetStaticAssets()
+	fs := http.FileServer(http.FS(assets))
+
+	if stripPrefix != "" {
+		fmt.Println("Returning stripped !")
+		return func(w http.ResponseWriter, r *http.Request) {
+			strippedRequest := r.Clone(r.Context())
+			strippedRequest.URL.Path = strings.TrimPrefix(strippedRequest.URL.Path, stripPrefix)
+			fmt.Println("The stripped path was:" + strippedRequest.URL.Path)
+			fs.ServeHTTP(w, strippedRequest)
+		}
+
+	} else {
+		fmt.Println("Returning normal !")
+		return func(w http.ResponseWriter, r *http.Request) {
+			fmt.Println("The original path was:" + r.URL.Path)
+
+			strippedRequest := r.Clone(r.Context())
+			strippedRequest.URL.Path = strings.TrimPrefix(strippedRequest.URL.Path, "/assets")
+			fmt.Println("The stripped path was:" + strippedRequest.URL.Path)
+
+			fs.ServeHTTP(w, strippedRequest)
+
+			// fmt.Println("The normal path was:" + r.URL.Path)
+			// fs.ServeHTTP(w, r)
+		}
+	}
+
+}
+
+func GetStaticAssets() fs.FS {
 	fs, err := fs.Sub(assets, "assets")
 	if err != nil {
 		panic(err)

@@ -1,0 +1,6 @@
+{
+    "name": "MyProxy",
+    "routeTemplate": "/",
+    "backendUri": "https://ark.katasec.com/api/arkweb",
+    "allowedHttpMethods": ["GET", "POST"]
+}
